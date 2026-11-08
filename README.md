@@ -35,7 +35,7 @@
 ```bash
 pip install -r requirements.txt
 
-# 1) 데이터 수집·정리 (reference/ 폴더의 CSV)
+# 1) 데이터 수집·정리 (reference/ 폴더의 CSV + 다발지역 API)
 python -m jeju_traffic.collect
 
 # 2) 앱 실행
@@ -70,6 +70,7 @@ ollama pull gemma3:4b             # 약 3.3GB
 
 | 변수 | 설명 |
 |---|---|
+| `TRAFFIC_HOTSPOT_URL` | 데이터허브 "교통사고 다발지역" API 주소(키 포함). 공개 저장소에 올리지 마세요. |
 | `GOOGLE_MAPS_API_KEY` | 있으면 구글 지도, 없으면 OpenStreetMap 지도로 표시됩니다. |
 | `LLM_PROVIDER`, `LLM_MODEL` | AI 서비스(`openrouter` 기본 / `openai` / `anthropic` / `ollama`)와 모델 이름. 키만 설정하면 해당 서비스가 자동 선택됩니다. 화면 왼쪽 **AI 설정**에서도 고를 수 있습니다. |
 | `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | 외부 AI 서비스 키. **외부 서비스를 쓰면 질문과 분석 결과 요약이 외부로 전송됩니다**(원자료·개인정보는 보내지 않음). 화면에서 입력한 키는 메모리에만 보관합니다. |
@@ -88,11 +89,12 @@ ollama pull gemma3:4b             # 약 3.3GB
 | ① | Python 3.12 설치 | 개발·검증 환경(3.12.10). 설치 시 "Add to PATH" 체크 |
 | ② | 프로젝트 폴더에서 `pip install -r requirements.txt` | 오프라인: 다른 PC에서 `pip download -r requirements.txt -d wheels` 후 `pip install --no-index --find-links wheels -r requirements.txt` |
 | ③ | AI 서비스 선택: OpenRouter 키를 `.env`에 입력(권장) 또는 Ollama 설치 후 `ollama pull gemma3:4b`(약 3.3GB) | 외부 전송 불가 시 Ollama. 오프라인 반입: 모델 폴더(`%USERPROFILE%\.ollama\models`)를 통째로 복사. 센터에서 외부 인터넷(openrouter.ai) 접속이 허용되어야 외부 AI 사용 가능 |
-| ④ | `python -m jeju_traffic.collect` | 새 CSV를 `reference/`에 넣었을 때만(기존 `data/jeju_traffic.sqlite` 사용 시 생략) |
-| ⑤ | `streamlit run app.py` → 브라우저 `http://127.0.0.1:8501` | 사이드바에 "AI 연결됨"이 뜨면 정상(키가 없으면 "기본 분석 모드") |
-| ⑥ | (선택) `python -m jeju_traffic.evaluate` | 센터 PC에서 모델 정확도·속도 측정 |
+| ④ | `.env.example`을 `.env`로 복사 | 다발지역 API 주소를 쓸 때만 필요. 자료가 이미 `data/`에 있으면 생략 가능 |
+| ⑤ | `python -m jeju_traffic.collect` | 새 CSV를 `reference/`에 넣었을 때만(기존 `data/jeju_traffic.sqlite` 사용 시 생략) |
+| ⑥ | `streamlit run app.py` → 브라우저 `http://127.0.0.1:8501` | 사이드바에 "AI 연결됨"이 뜨면 정상(키가 없으면 "기본 분석 모드") |
+| ⑦ | (선택) `python -m jeju_traffic.evaluate` | 센터 PC에서 모델 정확도·속도 측정 |
 
-**최신 자료로 바꾸려면:** 새 CSV를 `reference/`에 넣고 ④를 실행한 뒤 앱을 다시 시작합니다. 화면의 연도는 데이터에서 읽어 자동으로 바뀝니다. 새 파일의 열 구성이 기존과 다르면 `jeju_traffic/sources.py`의 파서 수정이 필요합니다.
+**최신 자료로 바꾸려면:** 새 CSV를 `reference/`에 넣고 ⑤를 실행한 뒤 앱을 다시 시작합니다. 화면의 연도는 데이터에서 읽어 자동으로 바뀝니다. 새 파일의 열 구성이 기존과 다르면 `jeju_traffic/sources.py`의 파서 수정이 필요합니다.
 
 **외부 연결:** 분석·차트·보고서·기본 분석 모드는 인터넷 없이 동작합니다. 인터넷이 쓰이는 곳은 ① AI 설명(외부 AI 서비스를 쓸 때: openrouter.ai 등), ② 지도 배경 타일(OpenStreetMap), ③ 글꼴(Google Fonts, 실패 시 기본 글꼴), ④ 다발지역 API 수집, ⑤ 구글 지도(키 설정 시)입니다. 화면 움직임(anime.js)은 파일이 내장되어 있어 인터넷이 필요 없습니다.
 
@@ -147,7 +149,7 @@ Agent의 Prompt는 `jeju_traffic/agent.py`의 `SYSTEM`(도구 선택·설명 지
 | 어린이(12세 이하) 교통사고 — 도로종류 / 시간대 | 2016~2020 / 2018~2020 | 연 | 사고 없는 시간대는 0건으로 보정 |
 | **보행자 사고(TAAS)** | 2018~2019 | **사고 1건 = 1행** (1,773건) | 시간·기상·노면·위반·피해자·좌표 → 교차 분석, 지점 지도 |
 | 법규위반별 교통단속 | 2015~2020 | 월 | 2017년 단속이 다른 해의 약 2배(원인 확인 필요) |
-| 교통사고 다발지역 | 제공처 설명 2017~2023 | 42곳 | 응답에 연도가 없어 시점별 연도를 단정하지 않음 |
+| 교통사고 다발지역(API) | 제공처 설명 2017~2023 | 42곳 | 응답에 연도가 없어 시점별 연도를 단정하지 않음 |
 
 ### 사용하지 않은 자료
 
@@ -175,8 +177,8 @@ Agent의 Prompt는 `jeju_traffic/agent.py`의 `SYSTEM`(도구 선택·설명 지
 ```
 app.py                  Streamlit 화면 (질문하기 / 자동 점검 보고서(개선 제안 포함) / 데이터 현황)
 jeju_traffic/
-  collect.py            수집 실행 (CSV 파서 → SQLite)
-  sources.py, api.py    파일별 파서(합계 행·형식 차이 정리)
+  collect.py            수집 실행 (CSV 파서 + API → SQLite)
+  sources.py, api.py    파일별 파서(합계 행·형식 차이 정리), 데이터허브 API 클라이언트
   quality.py            자동 품질 점검 (규모 이상, 합계 불일치, 결측, 좌표 이상 등)
   analysis.py           분석 도구 (모든 숫자는 여기서 계산)
   agent.py              질문 → 도구 선택 → 설명 (규칙 + AI, 지어낸 숫자 차단, 외부/로컬 AI 호출)
@@ -221,7 +223,7 @@ python -m jeju_traffic.evaluate --limit 8 --no-explain           # 빠른 점검
 - **사고 건수는 위험도가 아닙니다.** 교통량·보행량이 없어 "건수가 많다 ≠ 더 위험하다"입니다. 표본이 30건 미만인 구분은 치명도가 크게 흔들립니다.
 - **전망은 참고용입니다.** "계절 패턴과 최근 12개월 수준이 이어진다"는 가정이라 증가·감소 추세는 반영하지 않습니다. 검증 오차가 35%를 넘으면(예: 단속 건수) 전망하지 않습니다.
 - **AI 설명은 보조입니다.** 모델이 도구를 잘못 고르거나 숫자를 지어낼 수 있어(소형 모델일수록), 분명한 질문은 규칙이 도구를 고르고 AI는 설명만 맡습니다. 근거 없는 숫자가 든 문장, '지도를 보여드릴 수 없다'처럼 화면과 맞지 않는 문장, 중간에 끊긴 문장은 자동으로 빠집니다. 규칙이 판단하지 못하는 범위 밖 질문(예: "지금 도로 상황")은 AI가 엉뚱한 도구를 고를 수 있습니다.
-- **다발지역 자료는 연도 정보가 없습니다.** 7개 시점의 도시별 상위 3곳 순위표를 합친 형태라 "순위표에 몇 번 올랐는가"로만 분석합니다.
+- **다발지역 API는 연도 정보가 없습니다.** 7개 시점의 도시별 상위 3곳 순위표를 합친 형태라 "순위표에 몇 번 올랐는가"로만 분석합니다.
 
 - **개선 제안은 '검토 의견'입니다.** 통계는 원인과 개선 효과를 증명하지 않고, 교통량·보행량이 없으며, 이미 시행 중인 정책을 알 수 없습니다. 근거 강도는 표본 크기(사고 300건 이상=강함, 100건 이상=보통, 미만=약함)로 정하고 요인 비교형 제안은 최대 '보통'으로 제한합니다. 현장 조사와 전문가 검토가 필요합니다.
 
@@ -230,6 +232,7 @@ python -m jeju_traffic.evaluate --limit 8 --no-explain           # 빠른 점검
 - 로컬 Gemma 3 4B는 평가에서 **부적합**(도구 선택 67%, 숫자 충실도 0%, 응답 약 80초, CPU 전용 PC)이었습니다. 로컬 `gpt-oss:20b`도 도구 선택에 실패해 쓰지 않습니다. 센터 PC(GTX 1060)의 로컬 성능은 측정하지 못했습니다.
 - 외부 AI는 인터넷(openrouter.ai) 연결과 API 키, 사용 비용이 필요합니다. 외부 서비스가 막히면 키가 없을 때와 같이 규칙 기반 기본 분석 모드로 답합니다.
 - 지도 배경과 글꼴은 인터넷이 막히면 나오지 않습니다(지점 목록·표·차트는 정상).
+- 다발지역 API는 일일 호출 한도가 있고, 키가 없으면 해당 자료만 빠집니다(나머지 기능은 동작).
 - 원천 CSV의 열 구성이 바뀌면 파서(`sources.py`) 수정이 필요합니다.
 - 여러 명이 동시에 쓰는 상황은 시험하지 않았습니다.
 
@@ -238,6 +241,7 @@ python -m jeju_traffic.evaluate --limit 8 --no-explain           # 빠른 점검
 | 증상 | 해결 |
 |---|---|
 | "DB가 없습니다" | `python -m jeju_traffic.collect`를 먼저 실행 |
+| 다발지역 API가 403 | 데이터허브 호출 한도(일일 쿼터)일 수 있습니다. 하루 뒤 다시 실행하세요(이어받기 지원). |
 | "API 키가 없어 기본 분석 모드" | 왼쪽 'AI 설정'에 키를 입력하거나 `.env`에 `OPENROUTER_API_KEY` 설정 |
 | "AI 호출에 실패해(401 …)" | 이유가 괄호 안에 나옵니다. 401=키 오류(서비스와 키 종류가 맞는지 확인: `sk-or-…`는 OpenRouter), 402=크레딧 부족, 403(한도)=키 사용 한도 초과, 404=모델 이름 오류 또는 저장·학습 금지 조건을 만족하는 제공자가 없는 모델, 429=잠시 뒤 재시도 |
 | "AI 모델(Ollama)이 꺼져 있어…" | Ollama 설치·실행 후 `ollama pull <모델>`(로컬 Ollama를 고른 경우만) |
