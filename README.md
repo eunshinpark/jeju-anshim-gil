@@ -89,7 +89,7 @@ ollama pull gemma3:4b             # 약 3.3GB
 | ① | Python 3.12 설치 | 개발·검증 환경(3.12.10). 설치 시 "Add to PATH" 체크 |
 | ② | 프로젝트 폴더에서 `pip install -r requirements.txt` | 오프라인: 다른 PC에서 `pip download -r requirements.txt -d wheels` 후 `pip install --no-index --find-links wheels -r requirements.txt` |
 | ③ | AI 서비스 선택: OpenRouter 키를 `.env`에 입력(권장) 또는 Ollama 설치 후 `ollama pull gemma3:4b`(약 3.3GB) | 외부 전송 불가 시 Ollama. 오프라인 반입: 모델 폴더(`%USERPROFILE%\.ollama\models`)를 통째로 복사. 센터에서 외부 인터넷(openrouter.ai) 접속이 허용되어야 외부 AI 사용 가능 |
-| ④ | `.env.example`을 `.env`로 복사 | 다발지역 API 주소를 쓸 때만 필요. 자료가 이미 `data/`에 있으면 생략 가능 |
+| ④ | `.env.example`을 `.env`로 복사 | 다발지역 API 주소를 쓸 때만 필요. 저장소의 `data/jeju_traffic.sqlite`(DB)가 있으므로 다른 용도가 아니면 생략 가능 |
 | ⑤ | `python -m jeju_traffic.collect` | 새 CSV를 `reference/`에 넣었을 때만(기존 `data/jeju_traffic.sqlite` 사용 시 생략) |
 | ⑥ | `streamlit run app.py` → 브라우저 `http://127.0.0.1:8501` | 사이드바에 "AI 연결됨"이 뜨면 정상(키가 없으면 "기본 분석 모드") |
 | ⑦ | (선택) `python -m jeju_traffic.evaluate` | 센터 PC에서 모델 정확도·속도 측정 |
@@ -189,7 +189,7 @@ jeju_traffic/
 assets/                 마스코트 이미지, anime.min.js(내장)
   evaluate.py           AI 모델 검증 스크립트
 reference/              원천 CSV
-data/                   SQLite DB, 질문 기록 (git 제외)
+data/                   SQLite DB(저장소에 포함, 수집 없이 실행 가능), 질문 기록
 reports/                생성된 보고서 (git 제외)
 ```
 
@@ -240,7 +240,7 @@ python -m jeju_traffic.evaluate --limit 8 --no-explain           # 빠른 점검
 
 | 증상 | 해결 |
 |---|---|
-| "DB가 없습니다" | `python -m jeju_traffic.collect`를 먼저 실행 |
+| "DB가 없습니다" | `data/jeju_traffic.sqlite`가 없는 경우입니다. 저장소를 다시 받거나 `python -m jeju_traffic.collect`를 실행 |
 | 다발지역 API가 403 | 데이터허브 호출 한도(일일 쿼터)일 수 있습니다. 하루 뒤 다시 실행하세요(이어받기 지원). |
 | "API 키가 없어 기본 분석 모드" | 왼쪽 'AI 설정'에 키를 입력하거나 `.env`에 `OPENROUTER_API_KEY` 설정 |
 | "AI 호출에 실패해(401 …)" | 이유가 괄호 안에 나옵니다. 401=키 오류(서비스와 키 종류가 맞는지 확인: `sk-or-…`는 OpenRouter), 402=크레딧 부족, 403(한도)=키 사용 한도 초과, 404=모델 이름 오류 또는 저장·학습 금지 조건을 만족하는 제공자가 없는 모델, 429=잠시 뒤 재시도 |
